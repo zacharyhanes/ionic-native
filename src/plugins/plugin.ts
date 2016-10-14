@@ -145,7 +145,12 @@ function getPromise(cb) {
 function wrapPromise(pluginObj: any, methodName: string, args: any[], opts: any = {}) {
   let pluginResult, rej;
   const p = getPromise((resolve, reject) => {
-    pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, resolve, reject);
+    if (opts.destruct) {
+      pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, function(){ resolve(arguments); }, function(){ reject(arguments); });
+    } else {
+      pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, resolve, reject);
+    }
+
     rej = reject;
   });
   // Angular throws an error on unhandled rejection, but in this case we have already printed
@@ -170,7 +175,14 @@ function wrapOtherPromise(pluginObj: any, methodName: string, args: any[], opts:
 
 function wrapObservable(pluginObj: any, methodName: string, args: any[], opts: any = {}) {
   return new Observable(observer => {
-    let pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, observer.next.bind(observer), observer.error.bind(observer));
+    let pluginResult;
+
+    if (opts.destruct) {
+      pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, function(){ observer.next(arguments); }, function(){ observer.next(arguments); });
+    } else {
+      pluginResult = callCordovaPlugin(pluginObj, methodName, args, opts, observer.next.bind(observer), observer.error.bind(observer));
+    }
+
     if (pluginResult && pluginResult.error) {
       observer.error(pluginResult.error);
     }
